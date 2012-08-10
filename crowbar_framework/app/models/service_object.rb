@@ -121,6 +121,7 @@ class ServiceObject
 
   # Assumes the BA-LOCK is held
   def elements_not_ready(nodes, pre_cached_nodes = {})
+    @logger.debug("elements_not_ready enter: #{nodes}, #{pre_cached_nodes}")
     # Check to see if we should delay our commit until nodes are ready.
     delay = []
     nodes.each do |n|
@@ -128,12 +129,19 @@ class ServiceObject
       next if node.nil?
       
       pre_cached_nodes[n] = node
-      delay << n if node.crowbar['state'] != "ready" and !delay.include?(n)
+      state = node.crowbar['state']
+      @logger.debug("node #{n} is in #{state} state")
+      if state != "ready" and !delay.include?(n)
+        @logger.debug("adding #{n} to delay")
+        delay << n
+      end
     end
     [ delay, pre_cached_nodes ]
   end
 
   def add_pending_elements(bc, inst, elements, queue_me, pre_cached_nodes = {})
+    @logger.debug("add_pending_elements enter(#{bc.inspect}, #{inst.inspect}, #{elements.inspect}, #{queue_me}, #{pre_cached_nodes.inspect}")
+    
     # Create map with nodes and their element list
     all_new_nodes = {}
     elements.each do |elem, nodes|
@@ -142,6 +150,7 @@ class ServiceObject
         all_new_nodes[node] << elem
       end
     end
+    @logger.debug("all_new_nodes #{all_new_nodes.inspect}")
 
     f = acquire_lock "BA-LOCK"
     delay = []
@@ -185,6 +194,7 @@ class ServiceObject
       release_lock f
     end
 
+    @logger.debug("add_pending_elements: exit #{delay.inspect}, #{pre_cached_nodes.inspect}")
     [ delay, pre_cached_nodes ]
   end
 
@@ -271,16 +281,25 @@ class ServiceObject
       # Make sure the deps if we aren't being queued.
       unless queue_me
         deps.each do |dep|
+          @logger.debug("checking dep #{dep.inspect}")
           prop = ProposalObject.find_proposal(dep["barclamp"], dep["inst"])
 
-          # queue if prop doesn't exist
-          queue_me = true if prop.nil?
-          # queue if dep is queued
+          if prop.nil?
+            @logger.debug("queueing since prop doesn't exist")
+            queue_me = true
+          end
+
           queued = prop["deployment"][dep["barclamp"]]["crowbar-queued"] rescue false
-          queue_me = true if queued
-          # queue if dep has never run or failed
+          if queued
+            @logger.debug("queueing since dep is queued")
+            queue_me = true
+          end
+
           success = (prop["deployment"][dep["barclamp"]]["crowbar-status"] == "success") rescue false
-          queue_me = true unless success
+          unless success
+            @logger.debug("queueing since dep has never run successfully")
+            queue_me = true
+          end
         end
       end
 
@@ -766,12 +785,16 @@ class ServiceObject
     new_deployment = role.override_attributes[@bc_name]
     new_elements = new_deployment["elements"]
     element_order = new_deployment["element_order"]
+    @logger.debug("new_deployment: #{new_deployment.inspect}")
 
     # 
     # Attempt to queue the proposal.  If delay is empty, then run it.
     #
     deps = proposal_dependencies(role)
     delay, pre_cached_nodes = queue_proposal(inst, new_elements, deps)
+    @logger.debug("deps: #{deps.inspect}")
+    @logger.debug("pre_cached_nodes: #{pre_cached_nodes.inspect}")
+    @logger.debug("delay: #{delay.inspect}")
     return [202, delay] unless delay.empty?
 
     # make sure the role is saved
