@@ -248,12 +248,9 @@ class NodeObject < ChefObject
   end
 
   def mac
-    unless @node["crowbar"].nil? or self.crowbar_ohai["switch_config"].nil?
-      intf = sort_ifs[0]
-      self.crowbar_ohai["switch_config"][intf]["mac"] || (I18n.t :unknown)
-    else
-      (I18n.t :not_set)
-    end
+    sc = switch_config
+    return I18n.t(:not_set) if sc.nil?
+    return switch_attr("mac") || (I18n.t :unknown)
   end
 
   def allocated
@@ -666,40 +663,46 @@ class NodeObject < ChefObject
     [the_bond, interface_list, team_mode]
   end
 
-  # Switch config is actually a node set property from customer ohai.  It is really on the node and not the role
+  def switch_config
+    # Switch config is actually a node set property from customer
+    # ohai.  It is really on the node and not on the role.
+
+    return nil if
+      @node.nil? or
+      @node["crowbar"].nil? or
+      self.crowbar_ohai.nil?
+
+    self.crowbar_ohai["switch_config"]
+  end
+
+  def switch_attr(attr_name)
+    sc = switch_config
+    return nil if sc.nil?
+
+    ifaces = sort_ifs
+    return nil if ifaces.empty?
+    intf = ifaces[0]
+
+    ic = sc[intf]
+    return nil if ic.nil?
+    return ic[attr_name]
+  end
+
   def switch_name
-    unless @node.nil? or @node["crowbar"].nil? or self.crowbar_ohai.nil? or self.crowbar_ohai["switch_config"].nil?
-      intf = sort_ifs[0]
-      switch_name = self.crowbar_ohai["switch_config"][intf]["switch_name"]
-      unless switch_name == -1
-        switch_name.to_s.gsub(':', '-')
-      else
-        nil
-      end
-    else
-      nil
-    end
+    value = switch_attr("switch_name")
+    return nil if value == -1 or value.nil?
+    return value.to_s.gsub(':', '-')
   end
 
   # for stacked switches, unit is set while name is the same
   def switch_unit
-    unless @node["crowbar"].nil? or self.crowbar_ohai["switch_config"].nil?
-      intf = sort_ifs[0]
-      switch_unit = self.crowbar_ohai["switch_config"][intf]["switch_unit"]
-      (switch_unit == -1 ? nil : switch_unit)
-    else
-      nil
-    end
+    value = switch_attr("switch_unit")
+    return value == -1 ? nil : value
   end
 
   def switch_port
-    unless @node["crowbar"].nil? or self.crowbar_ohai.nil? or self.crowbar_ohai["switch_config"].nil?
-      intf = sort_ifs[0]
-      switch_port = self.crowbar_ohai["switch_config"][intf]["switch_port"]
-      (switch_port == -1 ? nil : switch_port)
-    else
-      nil
-    end
+    value = switch_attr("switch_port")
+    return value == -1 ? nil : value
   end
 
   # used to determine if display information has been set or if defaults should be used
