@@ -17,6 +17,7 @@
 
 require 'chef'
 require 'chef/mixin/deep_merge'
+require 'pp'
 
 class NodeObject < ChefObject
   extend CrowbarOffline
@@ -409,6 +410,29 @@ class NodeObject < ChefObject
     @node['roles'].nil? ? nil : @node['roles'].sort
   end
 
+  def mycompare(depth, a, b)
+    a.each_pair do |k, v|
+      next unless b.has_key? k
+
+      if v.kind_of? Hash
+        if b[k].kind_of? Hash
+          mycompare(depth + [ k ], v, b[k])
+        else
+          Rails.logger.warn("WIPEOUT with type mismatch! #{depth.join " > "}: #{v.pretty_inspect} -> #{b[k].pretty_inspect}")
+        end
+      else
+        old = v.pretty_inspect.rstrip
+        new = b[k].pretty_inspect
+
+        if v != b[k]
+          Rails.logger.warn("WIPEOUT  : #{depth.join " > "}: #{old} -> #{new}")
+        else
+          #Rails.logger.warn("no change: #{depth.join " > "}: #{old} -> #{new}")
+        end
+      end
+    end
+  end
+
   def save
     if @role.default_attributes["crowbar-revision"].nil?
       @role.default_attributes["crowbar-revision"] = 0
@@ -418,6 +442,8 @@ class NodeObject < ChefObject
       @role.default_attributes["crowbar-revision"] = @role.default_attributes["crowbar-revision"] + 1
     end
     Rails.logger.debug("Saving node: #{@node.name} - #{@role.default_attributes["crowbar-revision"]}")
+
+    mycompare(['top'], @node.normal_attrs, @role.default_attributes)
 
     # No matter what I try, I cannot get this to work without fully qualifying the namespace.
     Chef::Mixin::DeepMerge::deep_merge!(@node.normal_attrs, @role.default_attributes)
