@@ -14,8 +14,16 @@
 #
 # Author: RobHirschfeld
 #
+
+require 'chef'
+require 'chef/mixin/deep_merge'
+
 class NodeObject < ChefObject
   extend CrowbarOffline
+
+  # This seems completely pointless and ineffectual.  I still have to
+  # fully qualify the call to deep_merge! - ditto with extend.
+  include Chef::Mixin::DeepMerge
 
   def self.find(search)
     answer = []
@@ -401,10 +409,6 @@ class NodeObject < ChefObject
     @node['roles'].nil? ? nil : @node['roles'].sort
   end
 
-  def recursive_merge!(b, h)
-    b.merge!(h) {|key, _old, _new| if _old.class.kind_of? Hash.class then recursive_merge(_old, _new) else _new end  }
-  end
-
   def save
     if @role.default_attributes["crowbar-revision"].nil?
       @role.default_attributes["crowbar-revision"] = 0
@@ -415,7 +419,8 @@ class NodeObject < ChefObject
     end
     Rails.logger.debug("Saving node: #{@node.name} - #{@role.default_attributes["crowbar-revision"]}")
 
-    recursive_merge!(@node.normal_attrs, @role.default_attributes)
+    # No matter what I try, I cannot get this to work without fully qualifying the namespace.
+    Chef::Mixin::DeepMerge::deep_merge!(@node.normal_attrs, @role.default_attributes)
 
     if CHEF_ONLINE
       @role.save
