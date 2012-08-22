@@ -288,7 +288,7 @@ class NodeObject < ChefObject
   end
 
   # creates a hash with key attributes of the node from ohai for comparison
-  def class
+  def node_class
     c = {}
     c[:drives] = number_of_drives
     c[:ram] = memory
