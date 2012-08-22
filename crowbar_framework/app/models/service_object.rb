@@ -95,13 +95,21 @@ class ServiceObject
   def acquire_lock(name)
     @logger.debug("Acquire #{name} lock enter as uid #{Process.uid}")
     path = "tmp/#{name}.lock"
+    @logger.error("cwd is #{Dir.getwd}")
+    %x(ls -ld #{Dir.getwd}/tmp).each { |line| @logger.error(line) }
+    %x(ls -l #{path}).each { |line| @logger.error(line) }
     begin
       f = File.new(path, File::RDWR|File::CREAT, 0644)
     rescue
       @logger.error("Couldn't open #{path} for locking: #$!")
-      @logger.error("cwd was #{Dir.getwd})")
+      @logger.error("cwd is #{Dir.getwd}")
+      # %x(ls -ld #{Dir.getwd}/tmp).each { |line| @logger.error(line) }
+      # %x(ls -l #{path}).each { |line| @logger.error(line) }
       raise "Couldn't open #{path} for locking: #$!"
     end
+    @logger.error("cwd is #{Dir.getwd}")
+    # %x(ls -ld #{Dir.getwd}/tmp).each { |line| @logger.error(line) }
+    # %x(ls -l #{path}).each { |line| @logger.error(line) }
     @logger.debug("Acquiring #{name} lock")
     rc = false
     count = 0
