@@ -86,11 +86,15 @@ en:
   # Model Names / Attributes
   model:
     fail:
-      multiple_node: Multiple nodes responded to alias request
+      multiple_node_alias: Multiple nodes responded to alias request
+      multiple_node_public_name: Multiple nodes responded to public name request
     node:
-      invalid_dns: Alias not saved because it did not conform to valid DNS hostnames
-      too_long_dns: Alias not saved because it exceeds FQDN 63 character length
+      invalid_dns_alias: Alias not saved because it did not conform to valid DNS hostnames
+      too_long_dns_alias: Alias not saved because it exceeds FQDN 63 character length
       duplicate_alias: Alias not saved because a node already has the same alias
+      invalid_dns_public_name: Public name not saved because it did not conform to valid DNS hostnames
+      too_long_dns_public_name: Public name not saved because it exceeds FQDN 255 character length
+      duplicate_public_name: Public name not saved because a node already has the same alias
     proposal: Proposal
     service:
       name_exists: Name already exists. Please choose another.
@@ -103,6 +107,7 @@ en:
     attributes:
       node:
         name: Full Name
+        public_name: Public Name
         mac: MAC Address
         allocated: Allocated
         ip: IP Address
@@ -154,6 +159,7 @@ en:
       name: Name
       group: Group
       alias: Alias  
+      public_name: Public Name
       description: Description
       bios: BIOS
       raid: RAID
@@ -204,6 +210,7 @@ en:
       save_node_success: Node saved successfully
       allocate_node_success: Node allocated successfully
       alias: Alias
+      public_name: Public Name
       group: Group
       default: Using Default
       override: Override?

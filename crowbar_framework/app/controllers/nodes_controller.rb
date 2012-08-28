@@ -86,6 +86,10 @@ class NodesController < ApplicationController
               node.alias = values['alias']
               dirty = true
           end
+          if !(node.public_name == values['public_name'])
+              node.public_name = values['public_name']
+              dirty = true
+          end
           if !values['bios'].nil? and values['bios'].length>0 and !(node.bios_set === values['bios']) and !(values['bios'] === 'not_set')
             node.bios_set = values['bios']
             dirty = true
@@ -238,6 +242,7 @@ class NodesController < ApplicationController
       @node.bios_set = params[:bios]
       @node.raid_set = params[:raid]
       @node.alias = params[:alias]
+      @node.public_name = params[:public_name]
       @node.group = params[:group]
       @node.description = params[:description]
       @node.save
