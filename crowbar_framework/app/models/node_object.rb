@@ -807,7 +807,11 @@ class NodeObject < ChefObject
         bmc_user     = get_bmc_user
         bmc_password = get_bmc_password
         if bmc.nil? || !system("ipmitool -I lanplus -H #{bmc["address"]} -U #{bmc_user} -P #{bmc_password} power cycle")
-          unless system("sudo -i -u root -- ssh root@#{@node.name} /sbin/reboot -f")
+          # Have to redirect stdin, stdout, stderr and background reboot
+          # command on the client else ssh never disconnects when client dies
+          # `timeout` and '-o ConnectTimeout=10' are there in case anything
+          # else goes wrong...
+          unless system("sudo -i -u root -- timeout -k 5s 15s ssh -o ConnectTimeout=10 root@#{@node.name} '/sbin/reboot -f </dev/null >/dev/null 2>&1 &'")
             Rails.logger.warn("failed ipmitool power cycle and fallback ssh reboot for #{@node.name} - node in unknown state")
           end
         end
