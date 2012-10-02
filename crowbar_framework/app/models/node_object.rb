@@ -14,6 +14,9 @@
 #
 # Author: RobHirschfeld
 #
+
+require 'chef/mixin/deep_merge'
+
 class NodeObject < ChefObject
   extend CrowbarOffline
 
@@ -461,10 +464,6 @@ class NodeObject < ChefObject
     @node['roles'].nil? ? nil : @node['roles'].sort
   end
 
-  def recursive_merge!(b, h)
-    b.merge!(h) {|key, _old, _new| if _old.class.kind_of? Hash.class then recursive_merge(_old, _new) else _new end  }
-  end
-
   def save
     if @role.default_attributes["crowbar-revision"].nil?
       @role.default_attributes["crowbar-revision"] = 0
@@ -475,7 +474,7 @@ class NodeObject < ChefObject
     end
     Rails.logger.debug("Saving node: #{@node.name} - #{@role.default_attributes["crowbar-revision"]}")
 
-    recursive_merge!(@node.normal_attrs, @role.default_attributes)
+    Chef::Mixin::DeepMerge::deep_merge!(@role.default_attributes, @node.normal_attrs, { :merge_debug => true })
 
     if CHEF_ONLINE
       @role.save
