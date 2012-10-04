@@ -14,6 +14,10 @@
 #
 # Author: RobHirschfeld
 #
+
+require 'chef/mixin/deep_merge'
+require 'pp'
+
 class NodeObject < ChefObject
   extend CrowbarOffline
 
@@ -461,8 +465,38 @@ class NodeObject < ChefObject
     @node['roles'].nil? ? nil : @node['roles'].sort
   end
 
-  def recursive_merge!(b, h)
-    b.merge!(h) {|key, _old, _new| if _old.class.kind_of? Hash.class then recursive_merge(_old, _new) else _new end  }
+  def mycompare(depth, a, b)
+    a.each_pair do |k, v|
+      path = (depth + [k]).join ">"
+      old = v.pretty_inspect.rstrip
+
+      if ! b.has_key? k
+        if depth.size > 1
+          # log which attributes we would have zapped if we were still using
+          # the very broken recursive_merge!
+          Rails.logger.debug("bnc#775654: would have deleted #{path}; keeping value: #{old}")
+        end
+        next
+      end
+
+      new = b[k].pretty_inspect
+
+      if v.kind_of? Hash
+        if b[k].kind_of? Hash
+          mycompare(depth + [ k ], v, b[k])
+        else
+          Rails.logger.warn("bnc#775654: attr type mismatch: #{path}: #{old} -> #{new}")
+        end
+      else
+        # if path =~ /state/
+        #   if v != b[k]
+        #     Rails.logger.debug("bnc#775654: #{path}: #{old} -> #{new}")
+        #   else
+        #     Rails.logger.warn("bnc#775654 no change: #{path}: #{old} -> #{new}")
+        #   end
+        # end
+      end
+    end
   end
 
   def save
@@ -475,16 +509,9 @@ class NodeObject < ChefObject
     end
     Rails.logger.debug("Saving node: #{@node.name} - #{@role.default_attributes["crowbar-revision"]}")
 
-    # Remember ssh keys, so they don't get blown away by dodgy merge (bnc#775654)
-    ssh_tmp = {}
-    @node["crowbar"]["ssh"].each {|k,v|
-      ssh_tmp[k] = v
-    } unless @node["crowbar"].nil? || @node["crowbar"]["ssh"].nil?
+    mycompare(['top'], @node.normal_attrs, @role.default_attributes)
 
-    recursive_merge!(@node.normal_attrs, @role.default_attributes)
-
-    # Restore ssh keys after dodgy merge (bnc#775654)
-    @node["crowbar"]["ssh"] = ssh_tmp unless ssh_tmp.empty?
+    Chef::Mixin::DeepMerge::deep_merge!(@role.default_attributes, @node.normal_attrs, { :merge_debug => true })
 
     if CHEF_ONLINE
       @role.save
