@@ -182,6 +182,7 @@ class RoleObject < ChefObject
       if CHEF_ONLINE
         old_role = RoleObject.find_role_by_name(@role.name)
         if old_role
+          old_role.override_attributes[barclamp] ||= {}
           old_rev = old_role.override_attributes[barclamp]["crowbar-revision"]
           new_rev = @role.override_attributes[barclamp]["crowbar-revision"]
           if old_rev >= new_rev
