@@ -185,7 +185,7 @@ class RoleObject < ChefObject
           old_role.override_attributes[barclamp] ||= {}
           old_rev = old_role.override_attributes[barclamp]["crowbar-revision"]
           new_rev = @role.override_attributes[barclamp]["crowbar-revision"]
-          if old_rev >= new_rev
+          if old_rev && old_rev >= new_rev
             Rails.logger.warn("WARNING: revision race for role #{@role.name} (previous revision #{old_rev})")
           end
         end
